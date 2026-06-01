@@ -34,7 +34,7 @@ export const Route = createFileRoute("/")({
 type Modal = "tv" | "music" | "sofa" | "frame" | null;
 
 function SarayaRoom() {
-  const navigate = useNavigate();
+  const router = useNavigate();
   const [modal, setModal] = useState<Modal>(null);
   const [whisperIndex, setWhisperIndex] = useState(() =>
     Math.floor(Math.random() * sofaWhispers.length),
@@ -44,10 +44,10 @@ function SarayaRoom() {
   useEffect(() => {
     try {
       if (sessionStorage.getItem("saraya_entered") !== "1") {
-        navigate({ to: "/entrance" });
+        router({ to: "/entrance" });
       }
     } catch {}
-  }, [navigate]);
+  }, [router]);
 
   const greeting = useMemo(() => {
     const h = new Date().getHours();

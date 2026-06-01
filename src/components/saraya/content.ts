@@ -30,7 +30,7 @@ export const memories = [
 export const playlist = {
   name: "Saraya · Evening Lantern",
   curator: "for slow returns home",
-  url: "https://open.spotify.com/playlist/37i9dQZF1DWZd79rJ6a7lp",
+  url: "https://open.spotify.com/playlist/37i9dQZF1EJKcMtdMrRSC1?si=9EQ3ymBnQ82V261_AheLaA",
   tracks: [
     { title: "Tum Hi Ho Bandhu", artist: "Kavita Seth" },
     { title: "Agar Tum Saath Ho", artist: "Arijit Singh, Alka Yagnik" },

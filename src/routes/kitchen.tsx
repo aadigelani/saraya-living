@@ -630,32 +630,112 @@ function KitchenRoom() {
         </ul>
       </RoomDialog>
 
-      {/* ───────── Pantry ───────── */}
+      {/* ───────── Spice Discovery ───────── */}
       <RoomDialog
         open={modal === "pantry"}
-        onOpenChange={(o) => !o && setModal(null)}
+        onOpenChange={(o) => {
+          if (!o) {
+            setModal(null);
+            setSelectedSpice(null);
+          }
+        }}
         eyebrow="On the wooden shelf"
-        title="Jars, in good company"
-        description="Glass, label fading, smell intact."
+        title="Spice discovery"
+        description="Twelve jars. Each one has a story. Pick the one whose smell you want first."
       >
-        <ul className="space-y-2.5">
-          {pantryFinds.map((p) => (
-            <li
-              key={p.jar}
-              className="flex items-start gap-3 rounded-xl border border-[var(--brass)]/15 bg-background/40 p-3"
-            >
-              <span className="mt-0.5 inline-flex h-7 w-7 flex-none items-center justify-center rounded-full bg-[var(--brass)]/10 text-[10px] font-semibold uppercase tracking-wider text-[var(--brass)]">
-                {p.jar[0]}
-              </span>
-              <div className="min-w-0">
-                <p className="font-display text-base leading-tight text-foreground">
-                  {p.jar}
+        {!selectedSpice ? (
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+            {spiceJars.map((s) => (
+              <button
+                key={s.jar}
+                onClick={() => setSelectedSpice(s.jar)}
+                className="group flex flex-col items-center gap-1.5 rounded-lg border border-[var(--brass)]/20 bg-background/40 p-2 pt-2.5 transition-all hover:-translate-y-0.5 hover:border-[var(--brass)]/60"
+              >
+                {/* tiny jar */}
+                <span
+                  aria-hidden
+                  className="relative block h-12 w-9 overflow-hidden rounded-md rounded-t-sm border border-[var(--brass)]/40"
+                  style={{
+                    background:
+                      "linear-gradient(180deg, rgba(255,255,255,0.18) 0 18%, rgba(255,255,255,0.06) 18% 100%)",
+                    boxShadow: "inset 0 -8px 16px rgba(0,0,0,0.35)",
+                  }}
+                >
+                  <span
+                    className="absolute inset-x-0 bottom-0 block h-[70%]"
+                    style={{
+                      background: `linear-gradient(180deg, ${s.hue} 0%, color-mix(in oklab, ${s.hue} 60%, #1a1208) 100%)`,
+                    }}
+                  />
+                  <span
+                    aria-hidden
+                    className="absolute inset-x-1 top-0 block h-1.5 rounded-b-sm"
+                    style={{ background: "var(--brass)", opacity: 0.85 }}
+                  />
+                </span>
+                <span className="text-center text-[10px] leading-tight text-foreground/90">
+                  {s.jar}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          (() => {
+            const s = spiceJars.find((x) => x.jar === selectedSpice)!;
+            return (
+              <div className="animate-fade-in">
+                <div className="flex items-start gap-4">
+                  <span
+                    aria-hidden
+                    className="relative block h-20 w-14 flex-none overflow-hidden rounded-md rounded-t-sm border border-[var(--brass)]/50"
+                    style={{
+                      background:
+                        "linear-gradient(180deg, rgba(255,255,255,0.18) 0 18%, rgba(255,255,255,0.06) 18% 100%)",
+                      boxShadow: "inset 0 -10px 20px rgba(0,0,0,0.35)",
+                    }}
+                  >
+                    <span
+                      className="absolute inset-x-0 bottom-0 block h-[72%]"
+                      style={{
+                        background: `linear-gradient(180deg, ${s.hue} 0%, color-mix(in oklab, ${s.hue} 55%, #1a1208) 100%)`,
+                      }}
+                    />
+                    <span
+                      aria-hidden
+                      className="absolute inset-x-1 top-0 block h-2 rounded-b-sm"
+                      style={{ background: "var(--brass)", opacity: 0.9 }}
+                    />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--brass)]">
+                      from the wooden shelf
+                    </p>
+                    <p className="font-display text-2xl leading-tight text-foreground text-glow">
+                      {s.jar}
+                    </p>
+                    <p
+                      style={{ fontFamily: "Caveat, cursive" }}
+                      className="mt-1 text-lg italic text-foreground/90"
+                    >
+                      {s.blurb}
+                    </p>
+                  </div>
+                </div>
+
+                <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-foreground/85">
+                  {s.story}
                 </p>
-                <p className="text-xs text-muted-foreground">{p.note}</p>
+
+                <button
+                  onClick={() => setSelectedSpice(null)}
+                  className="mt-5 inline-flex items-center gap-2 rounded-full border border-[var(--brass)]/30 px-4 py-2 text-[10px] uppercase tracking-[0.24em] text-[var(--brass)] transition-colors hover:bg-[var(--brass)]/10"
+                >
+                  <ArrowLeft className="h-3 w-3" /> back to the shelf
+                </button>
               </div>
-            </li>
-          ))}
-        </ul>
+            );
+          })()
+        )}
       </RoomDialog>
     </main>
   );

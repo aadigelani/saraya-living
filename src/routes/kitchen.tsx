@@ -87,19 +87,26 @@ function KitchenRoom() {
     } catch {}
   }, [router]);
 
-  // Rotating fridge selection — 7 notes, different each open
+  // ── Fridge state ────────────────────────────────────
+  // openCount persists across the session — used to unlock the "frequent" secret
+  const [openCount, setOpenCount] = useState<number>(() => {
+    if (typeof window === "undefined") return 0;
+    return Number(sessionStorage.getItem("saraya_fridge_opens") ?? "0");
+  });
   const [fridgeSeed, setFridgeSeed] = useState(0);
   const visibleNotes = useMemo(() => {
     const pool = [...fridgeNotes.keys()];
-    // simple shuffle seeded by fridgeSeed
     for (let i = pool.length - 1; i > 0; i--) {
       const j = Math.floor(((Math.sin(fridgeSeed * 999 + i) + 1) / 2) * (i + 1));
       [pool[i], pool[j]] = [pool[j], pool[i]];
     }
-    return pool.slice(0, 7);
+    return pool.slice(0, 8);
   }, [fridgeSeed]);
-  const [secretFound, setSecretFound] = useState(false);
-  const [secretOpen, setSecretOpen] = useState(false);
+
+  const [foundSecrets, setFoundSecrets] = useState<Set<string>>(() => new Set());
+  const [openSecret, setOpenSecret] = useState<SecretNote | null>(null);
+  // A special tile shown in the grid when a non-hidden secret is available this open.
+  const [offeredSecret, setOfferedSecret] = useState<SecretNote | null>(null);
 
   // Stove
   const [dishIdx, setDishIdx] = useState<number | null>(null);

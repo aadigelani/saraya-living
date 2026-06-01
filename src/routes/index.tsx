@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import roomImage from "@/assets/haveli-room.jpg";
 import { RoomHotspot } from "@/components/saraya/RoomHotspot";
 import { RoomDialog } from "@/components/saraya/RoomDialog";
@@ -34,10 +34,20 @@ export const Route = createFileRoute("/")({
 type Modal = "tv" | "music" | "sofa" | "frame" | null;
 
 function SarayaRoom() {
+  const navigate = useNavigate();
   const [modal, setModal] = useState<Modal>(null);
   const [whisperIndex, setWhisperIndex] = useState(() =>
     Math.floor(Math.random() * sofaWhispers.length),
   );
+
+  // Gate: if the user hasn't passed through the entrance this session, send them there.
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem("saraya_entered") !== "1") {
+        navigate({ to: "/entrance" });
+      }
+    } catch {}
+  }, [navigate]);
 
   const greeting = useMemo(() => {
     const h = new Date().getHours();

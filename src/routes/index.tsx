@@ -168,9 +168,17 @@ function SarayaRoom() {
           {/* Kitchen archway (back-left, upper niches with lanterns) */}
           <RoomHotspot
             label="Kitchen"
-            hint="archway"
+            hint="someone left it warm"
             style={{ left: "14%", top: "39%", width: "20%", height: "12%" }}
-            onClick={() => navigate("/kitchen")}
+            onClick={() => {
+              const el = document.getElementById("room-stage");
+              if (el) {
+                el.style.transition = "filter 600ms ease, opacity 600ms ease";
+                el.style.filter = "brightness(0.4) blur(6px)";
+                el.style.opacity = "0.6";
+              }
+              setTimeout(() => router({ to: "/kitchen" }), 550);
+            }}
           />
 
           {/* Bedroom archway (center, glowing bed) */}

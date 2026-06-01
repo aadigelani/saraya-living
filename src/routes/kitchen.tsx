@@ -314,16 +314,76 @@ function KitchenRoom() {
             {visibleNotes.map((idx, i) => {
               const n = fridgeNotes[idx];
               const tint = NOTE_TINTS[n.color] ?? NOTE_TINTS.saffron;
-              const rot = ((idx * 53) % 11) - 5; // stable, varied
-              const isSecretHost = i === 4 && !secretFound; // a particular spot hides the note
+              const rot = ((idx * 53) % 11) - 5;
+
+              // Slot 4 hides the marigold "hidden" secret (only if undiscovered).
+              const hiddenSecret = secretNotes.find((s) => s.trigger === "hidden");
+              const isHiddenHost =
+                i === 4 && hiddenSecret && !foundSecrets.has(hiddenSecret.id);
+
+              // Slot 1 hosts the "offered" secret tile this open (if any).
+              const isOfferHost = i === 1 && offeredSecret !== null;
+
+              const revealSecret = (s: SecretNote) => {
+                setFoundSecrets((prev) => {
+                  const next = new Set(prev);
+                  next.add(s.id);
+                  return next;
+                });
+                if (s.id === offeredSecret?.id) setOfferedSecret(null);
+                setOpenSecret(s);
+              };
+
+              if (isOfferHost && offeredSecret) {
+                return (
+                  <button
+                    key={`offer-${offeredSecret.id}`}
+                    onClick={() => revealSecret(offeredSecret)}
+                    className="group relative aspect-square w-full overflow-hidden rounded-sm p-2 text-left transition-transform hover:scale-[1.05] focus:outline-none"
+                    style={{
+                      background:
+                        "linear-gradient(140deg, #f8e6c0 0%, #e9c98a 55%, #b8893a 100%)",
+                      color: "#2a1602",
+                      transform: `rotate(${rot}deg)`,
+                      boxShadow:
+                        "0 10px 22px -8px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.5)",
+                    }}
+                    aria-label="A folded note you haven't opened yet"
+                  >
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0 lantern-flicker"
+                      style={{
+                        background:
+                          "radial-gradient(circle at 30% 25%, rgba(255,255,255,0.55), transparent 55%)",
+                      }}
+                    />
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute left-1/2 top-[-7px] h-3 w-10 -translate-x-1/2 rounded-[2px]"
+                      style={{ background: "rgba(255,255,255,0.55)" }}
+                    />
+                    <p
+                      style={{ fontFamily: "Caveat, cursive" }}
+                      className="relative z-10 text-[12px] leading-tight italic"
+                    >
+                      folded.
+                      <br />
+                      for you.
+                    </p>
+                    <span
+                      aria-hidden
+                      className="hotspot-pulse pointer-events-none absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-white"
+                    />
+                  </button>
+                );
+              }
+
               return (
                 <button
                   key={`${fridgeSeed}-${idx}`}
                   onClick={() => {
-                    if (isSecretHost) {
-                      setSecretFound(true);
-                      setSecretOpen(true);
-                    }
+                    if (isHiddenHost && hiddenSecret) revealSecret(hiddenSecret);
                   }}
                   className="group relative aspect-square w-full rounded-sm p-2 text-left shadow-md transition-transform hover:scale-[1.04] focus:outline-none"
                   style={{
@@ -333,9 +393,8 @@ function KitchenRoom() {
                     boxShadow:
                       "0 6px 14px -6px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.25)",
                   }}
-                  aria-label={isSecretHost ? "A folded note peeks out" : n.text}
+                  aria-label={isHiddenHost ? "A folded note peeks out" : n.text}
                 >
-                  {/* tape */}
                   <span
                     aria-hidden
                     className="pointer-events-none absolute left-1/2 top-[-6px] h-3 w-8 -translate-x-1/2 rounded-[2px]"
@@ -347,7 +406,7 @@ function KitchenRoom() {
                   >
                     {n.text}
                   </p>
-                  {isSecretHost && (
+                  {isHiddenHost && (
                     <span
                       aria-hidden
                       className="hotspot-pulse pointer-events-none absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-white"
@@ -360,9 +419,11 @@ function KitchenRoom() {
 
           <div className="mt-4 flex items-center justify-between gap-3">
             <p className="text-[11px] italic text-muted-foreground">
-              {secretFound
-                ? "you found the folded one. it's yours to keep."
-                : "look closely — one of them is hiding something."}
+              {foundSecrets.size === 0
+                ? "look closely — one of them is hiding something."
+                : foundSecrets.size < secretNotes.length
+                  ? `${foundSecrets.size} of ${secretNotes.length} folded notes found. keep coming back.`
+                  : "you've found them all. the fridge has nothing left to hide. (for now.)"}
             </p>
             <button
               onClick={() => setFridgeSeed((s) => s + 1)}
@@ -373,9 +434,9 @@ function KitchenRoom() {
           </div>
         </div>
 
-        {secretOpen && (
+        {openSecret && (
           <div
-            className="mt-5 rounded-xl border border-[var(--brass)]/30 p-4"
+            className="mt-5 rounded-xl border border-[var(--brass)]/30 p-4 animate-fade-in"
             style={{
               background:
                 "linear-gradient(160deg, color-mix(in oklab, var(--brass) 18%, transparent), color-mix(in oklab, var(--crimson) 22%, transparent))",
@@ -384,16 +445,16 @@ function KitchenRoom() {
             }}
           >
             <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--brass)]">
-              {secretNote.preview}
+              {openSecret.preview}
             </p>
             <p
               style={{ fontFamily: "Caveat, cursive" }}
               className="mt-2 whitespace-pre-line text-xl leading-snug text-foreground text-glow"
             >
-              {secretNote.message}
+              {openSecret.message}
             </p>
             <p className="mt-3 text-right font-display text-sm italic text-[var(--brass)]">
-              {secretNote.signed}
+              {openSecret.signed}
             </p>
           </div>
         )}

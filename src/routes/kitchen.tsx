@@ -5,11 +5,12 @@ import { RoomHotspot } from "@/components/saraya/RoomHotspot";
 import { RoomDialog } from "@/components/saraya/RoomDialog";
 import {
   fridgeNotes,
-  secretNote,
+  secretNotes,
+  type SecretNote,
   stoveDishes,
   tableMessages,
   waterReminders,
-  pantryFinds,
+  spiceJars,
   windowView,
 } from "@/components/saraya/kitchen-content";
 import { ArrowLeft, Flame, Droplets, Sparkles } from "lucide-react";
@@ -86,19 +87,26 @@ function KitchenRoom() {
     } catch {}
   }, [router]);
 
-  // Rotating fridge selection — 7 notes, different each open
+  // ── Fridge state ────────────────────────────────────
+  // openCount persists across the session — used to unlock the "frequent" secret
+  const [openCount, setOpenCount] = useState<number>(() => {
+    if (typeof window === "undefined") return 0;
+    return Number(sessionStorage.getItem("saraya_fridge_opens") ?? "0");
+  });
   const [fridgeSeed, setFridgeSeed] = useState(0);
   const visibleNotes = useMemo(() => {
     const pool = [...fridgeNotes.keys()];
-    // simple shuffle seeded by fridgeSeed
     for (let i = pool.length - 1; i > 0; i--) {
       const j = Math.floor(((Math.sin(fridgeSeed * 999 + i) + 1) / 2) * (i + 1));
       [pool[i], pool[j]] = [pool[j], pool[i]];
     }
-    return pool.slice(0, 7);
+    return pool.slice(0, 8);
   }, [fridgeSeed]);
-  const [secretFound, setSecretFound] = useState(false);
-  const [secretOpen, setSecretOpen] = useState(false);
+
+  const [foundSecrets, setFoundSecrets] = useState<Set<string>>(() => new Set());
+  const [openSecret, setOpenSecret] = useState<SecretNote | null>(null);
+  // A special tile shown in the grid when a non-hidden secret is available this open.
+  const [offeredSecret, setOfferedSecret] = useState<SecretNote | null>(null);
 
   // Stove
   const [dishIdx, setDishIdx] = useState<number | null>(null);
@@ -124,9 +132,31 @@ function KitchenRoom() {
   const [tableIdx, setTableIdx] = useState(() => pickRandom(tableMessages));
   const [waterIdx, setWaterIdx] = useState(() => pickRandom(waterReminders));
 
+  // Spice discovery
+  const [selectedSpice, setSelectedSpice] = useState<string | null>(null);
+
   const openFridge = () => {
     setFridgeSeed((s) => s + 1);
-    setSecretOpen(false);
+    setOpenSecret(null);
+
+    const nextCount = openCount + 1;
+    setOpenCount(nextCount);
+    try {
+      sessionStorage.setItem("saraya_fridge_opens", String(nextCount));
+    } catch {}
+
+    // Pick which non-hidden secret (if any) to offer this open.
+    const hour = new Date().getHours();
+    const candidates: SecretNote[] = [];
+    for (const s of secretNotes) {
+      if (s.trigger === "hidden") continue;
+      if (foundSecrets.has(s.id)) continue;
+      if (s.trigger === "frequent" && nextCount >= 4) candidates.push(s);
+      if (s.trigger === "latenight" && (hour < 5 || hour >= 23)) candidates.push(s);
+      if (s.trigger === "rare" && Math.random() < 0.18) candidates.push(s);
+    }
+    setOfferedSecret(candidates.length ? candidates[Math.floor(Math.random() * candidates.length)] : null);
+
     setModal("fridge");
   };
   const openStove = () => {
@@ -287,16 +317,76 @@ function KitchenRoom() {
             {visibleNotes.map((idx, i) => {
               const n = fridgeNotes[idx];
               const tint = NOTE_TINTS[n.color] ?? NOTE_TINTS.saffron;
-              const rot = ((idx * 53) % 11) - 5; // stable, varied
-              const isSecretHost = i === 4 && !secretFound; // a particular spot hides the note
+              const rot = ((idx * 53) % 11) - 5;
+
+              // Slot 4 hides the marigold "hidden" secret (only if undiscovered).
+              const hiddenSecret = secretNotes.find((s) => s.trigger === "hidden");
+              const isHiddenHost =
+                i === 4 && hiddenSecret && !foundSecrets.has(hiddenSecret.id);
+
+              // Slot 1 hosts the "offered" secret tile this open (if any).
+              const isOfferHost = i === 1 && offeredSecret !== null;
+
+              const revealSecret = (s: SecretNote) => {
+                setFoundSecrets((prev) => {
+                  const next = new Set(prev);
+                  next.add(s.id);
+                  return next;
+                });
+                if (s.id === offeredSecret?.id) setOfferedSecret(null);
+                setOpenSecret(s);
+              };
+
+              if (isOfferHost && offeredSecret) {
+                return (
+                  <button
+                    key={`offer-${offeredSecret.id}`}
+                    onClick={() => revealSecret(offeredSecret)}
+                    className="group relative aspect-square w-full overflow-hidden rounded-sm p-2 text-left transition-transform hover:scale-[1.05] focus:outline-none"
+                    style={{
+                      background:
+                        "linear-gradient(140deg, #f8e6c0 0%, #e9c98a 55%, #b8893a 100%)",
+                      color: "#2a1602",
+                      transform: `rotate(${rot}deg)`,
+                      boxShadow:
+                        "0 10px 22px -8px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.5)",
+                    }}
+                    aria-label="A folded note you haven't opened yet"
+                  >
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0 lantern-flicker"
+                      style={{
+                        background:
+                          "radial-gradient(circle at 30% 25%, rgba(255,255,255,0.55), transparent 55%)",
+                      }}
+                    />
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute left-1/2 top-[-7px] h-3 w-10 -translate-x-1/2 rounded-[2px]"
+                      style={{ background: "rgba(255,255,255,0.55)" }}
+                    />
+                    <p
+                      style={{ fontFamily: "Caveat, cursive" }}
+                      className="relative z-10 text-[12px] leading-tight italic"
+                    >
+                      folded.
+                      <br />
+                      for you.
+                    </p>
+                    <span
+                      aria-hidden
+                      className="hotspot-pulse pointer-events-none absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-white"
+                    />
+                  </button>
+                );
+              }
+
               return (
                 <button
                   key={`${fridgeSeed}-${idx}`}
                   onClick={() => {
-                    if (isSecretHost) {
-                      setSecretFound(true);
-                      setSecretOpen(true);
-                    }
+                    if (isHiddenHost && hiddenSecret) revealSecret(hiddenSecret);
                   }}
                   className="group relative aspect-square w-full rounded-sm p-2 text-left shadow-md transition-transform hover:scale-[1.04] focus:outline-none"
                   style={{
@@ -306,9 +396,8 @@ function KitchenRoom() {
                     boxShadow:
                       "0 6px 14px -6px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.25)",
                   }}
-                  aria-label={isSecretHost ? "A folded note peeks out" : n.text}
+                  aria-label={isHiddenHost ? "A folded note peeks out" : n.text}
                 >
-                  {/* tape */}
                   <span
                     aria-hidden
                     className="pointer-events-none absolute left-1/2 top-[-6px] h-3 w-8 -translate-x-1/2 rounded-[2px]"
@@ -320,7 +409,7 @@ function KitchenRoom() {
                   >
                     {n.text}
                   </p>
-                  {isSecretHost && (
+                  {isHiddenHost && (
                     <span
                       aria-hidden
                       className="hotspot-pulse pointer-events-none absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-white"
@@ -333,9 +422,11 @@ function KitchenRoom() {
 
           <div className="mt-4 flex items-center justify-between gap-3">
             <p className="text-[11px] italic text-muted-foreground">
-              {secretFound
-                ? "you found the folded one. it's yours to keep."
-                : "look closely — one of them is hiding something."}
+              {foundSecrets.size === 0
+                ? "look closely — one of them is hiding something."
+                : foundSecrets.size < secretNotes.length
+                  ? `${foundSecrets.size} of ${secretNotes.length} folded notes found. keep coming back.`
+                  : "you've found them all. the fridge has nothing left to hide. (for now.)"}
             </p>
             <button
               onClick={() => setFridgeSeed((s) => s + 1)}
@@ -346,9 +437,9 @@ function KitchenRoom() {
           </div>
         </div>
 
-        {secretOpen && (
+        {openSecret && (
           <div
-            className="mt-5 rounded-xl border border-[var(--brass)]/30 p-4"
+            className="mt-5 rounded-xl border border-[var(--brass)]/30 p-4 animate-fade-in"
             style={{
               background:
                 "linear-gradient(160deg, color-mix(in oklab, var(--brass) 18%, transparent), color-mix(in oklab, var(--crimson) 22%, transparent))",
@@ -357,16 +448,16 @@ function KitchenRoom() {
             }}
           >
             <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--brass)]">
-              {secretNote.preview}
+              {openSecret.preview}
             </p>
             <p
               style={{ fontFamily: "Caveat, cursive" }}
               className="mt-2 whitespace-pre-line text-xl leading-snug text-foreground text-glow"
             >
-              {secretNote.message}
+              {openSecret.message}
             </p>
             <p className="mt-3 text-right font-display text-sm italic text-[var(--brass)]">
-              {secretNote.signed}
+              {openSecret.signed}
             </p>
           </div>
         )}
@@ -542,32 +633,112 @@ function KitchenRoom() {
         </ul>
       </RoomDialog>
 
-      {/* ───────── Pantry ───────── */}
+      {/* ───────── Spice Discovery ───────── */}
       <RoomDialog
         open={modal === "pantry"}
-        onOpenChange={(o) => !o && setModal(null)}
+        onOpenChange={(o) => {
+          if (!o) {
+            setModal(null);
+            setSelectedSpice(null);
+          }
+        }}
         eyebrow="On the wooden shelf"
-        title="Jars, in good company"
-        description="Glass, label fading, smell intact."
+        title="Spice discovery"
+        description="Twelve jars. Each one has a story. Pick the one whose smell you want first."
       >
-        <ul className="space-y-2.5">
-          {pantryFinds.map((p) => (
-            <li
-              key={p.jar}
-              className="flex items-start gap-3 rounded-xl border border-[var(--brass)]/15 bg-background/40 p-3"
-            >
-              <span className="mt-0.5 inline-flex h-7 w-7 flex-none items-center justify-center rounded-full bg-[var(--brass)]/10 text-[10px] font-semibold uppercase tracking-wider text-[var(--brass)]">
-                {p.jar[0]}
-              </span>
-              <div className="min-w-0">
-                <p className="font-display text-base leading-tight text-foreground">
-                  {p.jar}
+        {!selectedSpice ? (
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+            {spiceJars.map((s) => (
+              <button
+                key={s.jar}
+                onClick={() => setSelectedSpice(s.jar)}
+                className="group flex flex-col items-center gap-1.5 rounded-lg border border-[var(--brass)]/20 bg-background/40 p-2 pt-2.5 transition-all hover:-translate-y-0.5 hover:border-[var(--brass)]/60"
+              >
+                {/* tiny jar */}
+                <span
+                  aria-hidden
+                  className="relative block h-12 w-9 overflow-hidden rounded-md rounded-t-sm border border-[var(--brass)]/40"
+                  style={{
+                    background:
+                      "linear-gradient(180deg, rgba(255,255,255,0.18) 0 18%, rgba(255,255,255,0.06) 18% 100%)",
+                    boxShadow: "inset 0 -8px 16px rgba(0,0,0,0.35)",
+                  }}
+                >
+                  <span
+                    className="absolute inset-x-0 bottom-0 block h-[70%]"
+                    style={{
+                      background: `linear-gradient(180deg, ${s.hue} 0%, color-mix(in oklab, ${s.hue} 60%, #1a1208) 100%)`,
+                    }}
+                  />
+                  <span
+                    aria-hidden
+                    className="absolute inset-x-1 top-0 block h-1.5 rounded-b-sm"
+                    style={{ background: "var(--brass)", opacity: 0.85 }}
+                  />
+                </span>
+                <span className="text-center text-[10px] leading-tight text-foreground/90">
+                  {s.jar}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          (() => {
+            const s = spiceJars.find((x) => x.jar === selectedSpice)!;
+            return (
+              <div className="animate-fade-in">
+                <div className="flex items-start gap-4">
+                  <span
+                    aria-hidden
+                    className="relative block h-20 w-14 flex-none overflow-hidden rounded-md rounded-t-sm border border-[var(--brass)]/50"
+                    style={{
+                      background:
+                        "linear-gradient(180deg, rgba(255,255,255,0.18) 0 18%, rgba(255,255,255,0.06) 18% 100%)",
+                      boxShadow: "inset 0 -10px 20px rgba(0,0,0,0.35)",
+                    }}
+                  >
+                    <span
+                      className="absolute inset-x-0 bottom-0 block h-[72%]"
+                      style={{
+                        background: `linear-gradient(180deg, ${s.hue} 0%, color-mix(in oklab, ${s.hue} 55%, #1a1208) 100%)`,
+                      }}
+                    />
+                    <span
+                      aria-hidden
+                      className="absolute inset-x-1 top-0 block h-2 rounded-b-sm"
+                      style={{ background: "var(--brass)", opacity: 0.9 }}
+                    />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--brass)]">
+                      from the wooden shelf
+                    </p>
+                    <p className="font-display text-2xl leading-tight text-foreground text-glow">
+                      {s.jar}
+                    </p>
+                    <p
+                      style={{ fontFamily: "Caveat, cursive" }}
+                      className="mt-1 text-lg italic text-foreground/90"
+                    >
+                      {s.blurb}
+                    </p>
+                  </div>
+                </div>
+
+                <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-foreground/85">
+                  {s.story}
                 </p>
-                <p className="text-xs text-muted-foreground">{p.note}</p>
+
+                <button
+                  onClick={() => setSelectedSpice(null)}
+                  className="mt-5 inline-flex items-center gap-2 rounded-full border border-[var(--brass)]/30 px-4 py-2 text-[10px] uppercase tracking-[0.24em] text-[var(--brass)] transition-colors hover:bg-[var(--brass)]/10"
+                >
+                  <ArrowLeft className="h-3 w-3" /> back to the shelf
+                </button>
               </div>
-            </li>
-          ))}
-        </ul>
+            );
+          })()
+        )}
       </RoomDialog>
     </main>
   );

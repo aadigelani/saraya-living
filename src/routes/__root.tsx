@@ -77,14 +77,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "saraya" },
+      { name: "description", content: "Saraya Living is an interactive digital home experience, offering a romantic, mobile-first living room." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "saraya" },
+      { property: "og:description", content: "Saraya Living is an interactive digital home experience, offering a romantic, mobile-first living room." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "saraya" },
+      { name: "twitter:description", content: "Saraya Living is an interactive digital home experience, offering a romantic, mobile-first living room." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f73d286b-35f5-4d9b-bfe7-f51a978bb405/id-preview-58c6c787--1488679a-4ac7-418a-be2e-e6c3f300b272.lovable.app-1780318971105.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f73d286b-35f5-4d9b-bfe7-f51a978bb405/id-preview-58c6c787--1488679a-4ac7-418a-be2e-e6c3f300b272.lovable.app-1780318971105.png" },
     ],
     links: [
       {

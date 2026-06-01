@@ -134,7 +134,26 @@ function KitchenRoom() {
 
   const openFridge = () => {
     setFridgeSeed((s) => s + 1);
-    setSecretOpen(false);
+    setOpenSecret(null);
+
+    const nextCount = openCount + 1;
+    setOpenCount(nextCount);
+    try {
+      sessionStorage.setItem("saraya_fridge_opens", String(nextCount));
+    } catch {}
+
+    // Pick which non-hidden secret (if any) to offer this open.
+    const hour = new Date().getHours();
+    const candidates: SecretNote[] = [];
+    for (const s of secretNotes) {
+      if (s.trigger === "hidden") continue;
+      if (foundSecrets.has(s.id)) continue;
+      if (s.trigger === "frequent" && nextCount >= 4) candidates.push(s);
+      if (s.trigger === "latenight" && (hour < 5 || hour >= 23)) candidates.push(s);
+      if (s.trigger === "rare" && Math.random() < 0.18) candidates.push(s);
+    }
+    setOfferedSecret(candidates.length ? candidates[Math.floor(Math.random() * candidates.length)] : null);
+
     setModal("fridge");
   };
   const openStove = () => {

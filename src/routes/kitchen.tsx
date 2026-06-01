@@ -5,11 +5,12 @@ import { RoomHotspot } from "@/components/saraya/RoomHotspot";
 import { RoomDialog } from "@/components/saraya/RoomDialog";
 import {
   fridgeNotes,
-  secretNote,
+  secretNotes,
+  type SecretNote,
   stoveDishes,
   tableMessages,
   waterReminders,
-  pantryFinds,
+  spiceJars,
   windowView,
 } from "@/components/saraya/kitchen-content";
 import { ArrowLeft, Flame, Droplets, Sparkles } from "lucide-react";

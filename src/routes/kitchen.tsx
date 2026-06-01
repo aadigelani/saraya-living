@@ -132,6 +132,9 @@ function KitchenRoom() {
   const [tableIdx, setTableIdx] = useState(() => pickRandom(tableMessages));
   const [waterIdx, setWaterIdx] = useState(() => pickRandom(waterReminders));
 
+  // Spice discovery
+  const [selectedSpice, setSelectedSpice] = useState<string | null>(null);
+
   const openFridge = () => {
     setFridgeSeed((s) => s + 1);
     setOpenSecret(null);
